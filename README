@@ -1,0 +1,29 @@
+使用blazeds作为flex和Java通信的桥梁。具体使用方法参考以下四个链接：
+1.	Flex使用Blazeds与Java交互及自定义对象转换详解
+http://www.cnblogs.com/RocD-DuPeng/articles/1751040.html
+2.	Flex和Java 整合
+http://blog.csdn.net/bill1315/article/details/5751496
+3.	通过J2EE Web工程添加Flex项目，进行BlazeDS开发
+http://www.cnblogs.com/noam/archive/2010/07/22/1782955.html
+4.	FLEX3+struts2.1.6+spring2.5.5+hibernate3.2整合日记
+http://blog.csdn.net/ichsonx/article/details/4372930
+本工程的部署方法：
+将WEB-INF压缩包解压，将WEB-INF目录下的4个子目录复制到已有工程的WEB-INF文件夹下。打开web.xml文件，复制以下的文本到已有工程的web.xml中。至此完成blazeds的部署。
+ 
+将Frequency压缩包中所有文件解压到已有工程的WebRoot目录下，该压缩包中主要是flash执行文件，可整合到网页中。但是flash文件必须放置在这一层目录，否则就要更改flash源文件中的endpoint重新编译。详情参见参考文章2。
+上述操作完成后可以通过访问http://localhost:8080/工程名/FrequencyWithServer.html看到效果。
+Flex访问Java对象方法说明:
+使用Flex中的RemoteObject访问Java对象。在本工程中，后端Java程序向前端Flex传送的数据对象为FrequencyBean。结构定义在FrequencyBean.java文件中。
+通过调用FreqManager类的getBean()方法来获取FrequencyBean对象。通过修改FreqManager.java中的getBean()方法来改变数据来源，例如访问数据库来获取数据。
+修改编译后的FreqManager.class和FrequencyBean.class文件放置到工程WEB-INF目录中的classes文件夹中。具体参见参考文章1和工程源码。
+Flex采用轮询的机制向后端获取数据，时间间隔默认5秒一次，可在工程源码中修改时间间隔。
+
+
+
+
+
+
+
+
+
+
