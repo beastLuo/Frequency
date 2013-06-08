@@ -1,0 +1,175 @@
+<?xml version="1.0" encoding="utf-8"?>
+<mx:Application xmlns:mx="http://www.adobe.com/2006/mxml" layout="absolute" creationComplete="init();" 
+	frameRate="100" horizontalScrollPolicy="off" verticalScrollPolicy="off">
+	<mx:Style>
+		Label
+		{
+			font-size:12px;
+			height:25;
+			width:30;
+		} 
+		ToolTip
+		{
+			leading:0;
+			text-align:left;
+			font-size:14px;
+			text-indent:30px; 
+			background-color:white;
+			color:#e86a1c;
+			padding-left:20px;
+			padding-right:30px;
+		}
+	</mx:Style>
+	<mx:Script>
+		<![CDATA[
+			import elements.ConfigBean;
+			import elements.FrequencyBean;
+			import mx.rpc.events.FaultEvent;
+			import mx.rpc.events.ResultEvent;
+			import mx.containers.Canvas;
+			import mx.collections.ArrayCollection;
+			import elements.Carrier;
+			import elements.FrePool;
+			import elements.XAxis;
+			import elements.Wave;
+			import elements.RectBG;
+			import mx.controls.Label;
+			import mx.core.UIComponent;
+			import elements.Background;
+			private var xStartPoint:Point;
+			private var xEndPoint:Point;
+			
+			private var labelHeight:int = 30;
+			private var cb:ConfigBean;
+			public var fontColor:uint;
+			public var mainBgColor:uint;
+			public var bgLineColor:uint;
+			public var bgLineThick:int;
+			public var poolBgColor:uint;
+			public var poolBgLineColor:uint;
+			public var poolCarrierBgColor:uint;
+			public var poolCarrierBgLineColor:uint;
+			public var poolLineThick:int;
+			public var carrierLineColor:uint;
+			public var carrierLineThick:int;
+			
+			private var xAxis:XAxis;
+			private var bg:Background;
+			//设置轮询间隔单位：毫秒
+			private var timer:Timer;
+			
+			public function init():void
+			{
+				config.getBean();
+			}
+			
+			public function doInit():void
+			{
+				xStartPoint = new Point(0, this.main.height - labelHeight);
+				xEndPoint = new Point(this.main.width, this.main.height - labelHeight);
+				xAxis = new XAxis(xStartPoint, xEndPoint, bgLineColor, bgLineThick);
+				this.addChild(xAxis);
+				
+				bg = new Background(this.main.width, this.main.height); 
+				bg.setLineStyle(bgLineColor, bgLineThick);
+				bg.drawDivLine(); 
+				this.addChild(bg);
+			}
+			var xAxisIsInit:Boolean = false;
+			public function dataHandler(e:ResultEvent):void
+			{
+				bg.clearCarrier();
+				bg.clearFpool();
+				var fb:FrequencyBean = FrequencyBean(e.result);
+				
+				if(!xAxisIsInit)
+				{
+					xAxis.setBothEnds(fb.xAxisStartN, fb.xAxisEndN);
+					xAxisIsInit = true;
+				}
+				bg.setYTag(fb.yMax, "dB");
+				bg.setTitle(fb.transponderName, xAxis);
+				
+				var fpool:FrePool = new FrePool(fb.poolStartN, fb.poolEndN);
+				
+				fpool.setDrawStyle(poolBgColor, poolBgLineColor, poolCarrierBgColor, poolCarrierBgLineColor, poolLineThick);
+				fpool.setRefresh(xAxis);
+				bg.setPool(fpool);
+				
+				var widthOfC:ArrayCollection = ArrayCollection(fb.widthOfSignals);
+				var freqOfC:ArrayCollection = ArrayCollection(fb.freqOfSignals);
+				var heightOfC:ArrayCollection = ArrayCollection(fb.heightOfSignals);
+				var nameOfC:ArrayCollection = ArrayCollection(fb.nameOfSignals);
+				var tips:ArrayCollection = ArrayCollection(fb.tooltips);
+				for(var i:int = 0; i < widthOfC.length; i++)
+				{
+					var width:Number = Number(widthOfC[i]);
+					var freq:Number = Number(freqOfC[i]);
+					var height:Number = Number(heightOfC[i]);
+					var name:String = String(nameOfC[i]);
+					var c:Carrier = new Carrier(width, freq, height, name);
+					c.setLineStyle(carrierLineThick, carrierLineColor);
+					var tip:String = String(tips[i]);
+					c.setToolTip(tip);
+					c.setRefresh(xAxis, bg, fpool);
+					bg.setCarrier(c);
+				}
+				bg.refresh();
+				
+				this.main.setStyle("backgroundColor", mainBgColor.toString());
+				
+				
+				addEventListener(Event.ENTER_FRAME, shakeWave);
+			}
+			
+			 public function configHandler(e:ResultEvent):void
+			{
+				this.cb = ConfigBean(e.result);
+				
+				/* main.width = cb.frameWidth;
+				main.height = cb.frameHeight; */
+				this.timer = new Timer(cb.pollFreq);
+				
+				this.fontColor = cb.fontColor;
+				this.mainBgColor = cb.mainBgColor;
+				this.bgLineColor = cb.bgLineColor;
+				this.bgLineThick = cb.bgLineThick;
+				this.poolBgColor = cb.poolBgColor;
+				this.poolBgLineColor = cb.poolBgLineColor;
+				this.poolCarrierBgColor = cb.poolCarrierBgColor;
+				this.poolCarrierBgLineColor = cb.poolCarrierBgLineColor;
+				this.poolLineThick = cb.poolLineThick;
+				this.carrierLineColor = cb.carrierLineColor;
+				this.carrierLineThick = cb.carrierLineThick;
+				
+				doInit();
+				ro.getBean();
+				timer.addEventListener(TimerEvent.TIMER, repeat);
+				timer.start();
+			} 
+			
+			public function ErrHandler(e:FaultEvent):void
+			{
+			
+			}
+			public function repeat(e:Event):void
+			{
+				ro.getBean();
+			}
+			
+			public function shakeWave(event:Event):void
+			{
+				//波形抖动
+				bg.doShake();
+			}
+		]]>
+	</mx:Script>
+	<mx:RemoteObject id="ro" destination="main" endpoint="messagebroker/amf"
+        result="dataHandler(event)" fault="ErrHandler(event)"/> 
+    <mx:RemoteObject id="config" destination="config" endpoint="messagebroker/amf"
+        result="configHandler(event)" fault="ErrHandler(event)"/> 
+    <mx:Panel id="main" width="100%" height="100%" backgroundColor="black" horizontalScrollPolicy="off" verticalScrollPolicy="off" borderStyle="none">
+    	
+    </mx:Panel>
+    <!--<mx:HTTPService id="config" url="config.xml" resultFormat="e4x" result="init(event)"/>-->
+</mx:Application>
